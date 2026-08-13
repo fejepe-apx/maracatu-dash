@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maracatu'26 — Painel de Reconhecimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#061436; --line:rgba(255,255,255,.14);
+  --ink:#fff; --muted:rgba(255,255,255,.60); --muted2:rgba(255,255,255,.40);
+  --red:#E4141A; --pink:#E5127D; --gold:#F4A900;
+  --ok:#3ED598; --warn:#F4A900; --bad:#FF5A5F;
+  --disp:'Poppins',system-ui,sans-serif; --body:'Inter',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;opacity:.16;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")}
+body.drag::after{content:"Solte a planilha para atualizar";position:fixed;inset:16px;z-index:200;
+  border:2px dashed var(--gold);border-radius:20px;background:rgba(6,20,54,.9);color:var(--gold);
+  font-family:var(--disp);font-weight:800;font-size:28px;display:flex;align-items:center;justify-content:center}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px 90px}
+header{padding:44px 0 26px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
+h1{font-family:var(--disp);font-weight:800;font-size:clamp(38px,7vw,68px);line-height:.94;letter-spacing:-.02em;margin:10px 0 0}
+h1 em{font-style:normal;color:var(--pink)}
+.sub{margin-top:16px;max-width:680px;color:var(--muted);font-size:14.5px}
+/* fonte de dados */
+.source{margin-top:24px;border:1px solid var(--line);border-radius:14px;padding:16px 18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+  display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.source .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted2);display:block}
+.source .val{font-family:var(--disp);font-weight:700;font-size:14.5px;margin-top:2px}
+.source .val.live{color:var(--ok)}
+.spacer{flex:1;min-width:12px}
+button.load{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;
+  background:var(--gold);color:#061436;border:0;border-radius:999px;padding:11px 20px;cursor:pointer}
+button.load:hover{filter:brightness(1.08)}
+button.load:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+.hint{font-size:12.5px;color:var(--muted2);margin-top:10px;width:100%}
+.err{color:var(--bad);font-size:13px;width:100%;margin-top:8px}
+.alert{margin-top:22px;border-left:3px solid var(--gold);background:rgba(244,169,0,.09);
+  padding:12px 16px;border-radius:0 8px 8px 0;font-size:13.5px;color:rgba(255,255,255,.82)}
+.alert b{color:var(--gold)}
+.sec{margin-top:46px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:22px;flex-wrap:wrap}
+.sec-head h2{font-family:var(--disp);font-weight:800;font-size:24px;letter-spacing:-.01em;margin:0}
+.sec-head .note{font-size:12.5px;color:var(--muted2);font-family:var(--mono);letter-spacing:.04em}
+.paete{display:flex;gap:3px;margin:12px 0 0}
+.paete i{flex:1;height:13px;border-radius:3px;background:rgba(255,255,255,.11)}
+.paete i.on{background:var(--c,var(--gold))}
+.paete i.over{background:var(--ok)}
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+  border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h3{font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:.02em;margin:0 0 4px;text-transform:uppercase}
+.big{font-family:var(--disp);font-weight:800;font-size:34px;line-height:1.05;letter-spacing:-.02em;margin-top:8px}
+.big small{font-family:var(--mono);font-weight:500;font-size:13px;color:var(--muted);letter-spacing:0}
+.card .cap{font-size:12.5px;color:var(--muted);margin-top:10px}
+.badge{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 9px;border-radius:999px;border:1px solid currentColor}
+.b-ok{color:var(--ok)} .b-warn{color:var(--warn)} .b-bad{color:var(--bad)} .b-mute{color:var(--muted2)}
+.tabs{position:sticky;top:0;z-index:20;display:flex;gap:6px;flex-wrap:wrap;padding:12px 0;
+  background:linear-gradient(180deg,var(--bg) 72%,rgba(6,20,54,0));margin-top:40px}
+.tab{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;
+  background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer}
+.tab:hover{color:#fff}
+.tab[aria-selected="true"]{background:var(--pink);border-color:var(--pink);color:#fff}
+.tab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.panel[hidden]{display:none}
+.award{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px;background:rgba(255,255,255,.025)}
+.award > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:14px;padding:16px 18px}
+.award > summary::-webkit-details-marker{display:none}
+.award summary:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+.tick{width:5px;align-self:stretch;border-radius:3px;background:var(--gold);flex:none;min-height:38px}
+.aw-t{flex:1;min-width:0}
+.aw-t h3{font-family:var(--disp);font-weight:800;font-size:17px;margin:0;letter-spacing:-.01em}
+.aw-t p{margin:3px 0 0;font-size:12.5px;color:var(--muted);font-family:var(--mono);letter-spacing:.02em}
+.aw-n{font-family:var(--disp);font-weight:800;font-size:26px;letter-spacing:-.02em;white-space:nowrap}
+.aw-n span{font-size:13px;color:var(--muted);font-family:var(--mono);font-weight:500}
+.aw-body{padding:0 18px 18px;border-top:1px solid var(--line);padding-top:16px}
+.rule{font-size:12.5px;color:var(--muted);margin:0 0 14px;padding-left:12px;border-left:2px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted2);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:middle}
+tbody tr:hover{background:rgba(255,255,255,.04)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.name{font-weight:600}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,.08);color:var(--muted)}
+.rank{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--gold)}
+.yes{color:var(--ok);font-weight:700} .no{color:var(--muted2)}
+.scroll{overflow-x:auto}
+.com{border:1px solid var(--line);border-radius:14px;padding:18px;background:rgba(255,255,255,.03)}
+.com h3{font-family:var(--disp);font-weight:800;font-size:19px;margin:0}
+.com .row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;font-size:13px}
+.com .row b{font-family:var(--mono);font-weight:600}
+.mini{display:flex;gap:2px;margin-top:5px;flex-wrap:wrap}
+.mini i{width:14px;height:8px;border-radius:2px;background:rgba(255,255,255,.12)}
+.mini i.on{background:var(--ok)} .mini i.need{border:1px solid var(--gold)}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+input[type=search],select{font-family:var(--body);font-size:13.5px;background:rgba(255,255,255,.06);
+  border:1px solid var(--line);border-radius:9px;padding:9px 13px;color:#fff;min-width:170px}
+input[type=search]::placeholder{color:var(--muted2)}
+select option{background:#0C2472}
+.foot{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted2)}
+.foot b{color:var(--muted)}
+@media(max-width:900px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:1fr}.g2{grid-template-columns:1fr}}
+@media(max-width:560px){.g4{grid-template-columns:1fr}.aw-n{font-size:20px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow">Maracatu'26 · Atenda ao Chamado</div>
+  <h1>Painel de<br><em>Reconhecimento</em></h1>
+  <p class="sub">Como a Rede pernambucana chega ao palco: quem já está reconhecido, quem está premiado e o que ainda falta antes do fechamento das auditorias.</p>
+
+  <div class="source">
+    <div><span class="lbl">Dados</span><span class="val" id="srcName">—</span></div>
+    <div><span class="lbl">EJs lidas</span><span class="val" id="srcN">—</span></div>
+    <div>
+      <span class="lbl">Mês de referência</span>
+      <select id="mes" style="min-width:150px;margin-top:4px"></select>
+    </div>
+    <div class="spacer"></div>
+    <button class="load" id="btnLoad">Atualizar com a planilha</button>
+    <input type="file" id="file" accept=".xlsx,.xlsm" hidden>
+    <p class="hint">Exporte a Planilha da Excelência em <b>.xlsx</b> e solte o arquivo em qualquer lugar desta página (ou use o botão). Nada é enviado para lugar nenhum — a leitura acontece no seu navegador. As abas usadas são <b>RESUMÃO</b>, <b>MENTE DA DDR</b> e <b>Monitoramento Acumulado</b>.</p>
+    <p class="err" id="err" hidden></p>
+  </div>
+
+  <div class="alert" style="border-left-color:var(--ok);background:rgba(62,213,152,.09)"><b style="color:var(--ok)">Pronto para divulgar:</b> nenhum nome de guardião aparece neste painel — só EJ, comunidade e resultado. Pode circular na Rede sem expor a distribuição da guarda.</div>
+  <div class="alert"><b>Leia antes de decidir:</b> o mês corrente ainda está em auditoria. Os indicadores mensais (Ritmo Significativo, A.C. do período) refletem só o que já foi auditado até a extração. Reconhecimentos de gamificação (Articulador do Chamado, Respondendo ao Batuque), de votação (Empresário Resposta, EJ Resposta do Cortejo, Conselheiros) e o Selo EJ ficam fora deste painel.</div>
+</header>
+
+<section class="sec" id="globais">
+  <div class="sec-head"><h2>Metas globais da Rede</h2><span class="note">o placar que o Maracatu inteiro persegue</span></div>
+  <div class="grid g4" id="globalCards"></div>
+</section>
+
+<div class="tabs" role="tablist">
+  <button class="tab" role="tab" aria-selected="true" data-p="p1">Reconhecimentos</button>
+  <button class="tab" role="tab" aria-selected="false" data-p="p2">Premiações</button>
+  <button class="tab" role="tab" aria-selected="false" data-p="p3">Gaps</button>
+  <button class="tab" role="tab" aria-selected="false" data-p="p4">Por EJ</button>
+</div>
+
+<div class="panel" id="p1">
+  <section class="sec" style="margin-top:8px">
+    <div class="sec-head"><h2>Comunidade Resposta</h2><span class="note">Indicador: metas da comunidade · sobe ao palco a comunidade que bater as 4</span></div>
+    <div class="grid g2" id="coms"></div>
+  </section>
+  <section class="sec">
+    <div class="sec-head"><h2>Reconhecimentos da Rede</h2><span class="note">clique para abrir a lista de EJs</span></div>
+    <div id="awards"></div>
+  </section>
+  <section class="sec">
+    <div class="sec-head"><h2>Fora deste painel</h2><span class="note">dependem de gamificação, votação ou presença no dia</span></div>
+    <div class="grid g3" id="outside"></div>
+  </section>
+</div>
+<div class="panel" id="p2" hidden></div>
+<div class="panel" id="p3" hidden></div>
+<div class="panel" id="p4" hidden></div>
+
+<div class="foot">
+  Regras conforme o Edital de Reconhecimento do Maracatu'26; números lidos direto do Cérebro de Meta.
+  Duas leituras foram assumidas onde o edital não fecha a definição: <b>"no verde de ECM"</b> = farol Verde ou BATEU (engajamento ≥ 50% da meta) e <b>"no verde de colab"</b> = faturamento colaborativo ≥ meta escalonada do mês.
+  O <b>Saldo de Evolução</b> é calculado ao vivo pelo tracking de cluster (coluna AO da MENTE DA DDR) contra o cluster atual, somando o peso de cada EJ que cai.
+  O <b>Ritmo Significativo</b> é lido como atingir a meta de faturamento do mês (meta anual ÷ 12), sem a condição de teto do edital — uma EJ pode ser Garra e Realeza ao mesmo tempo.
+  O <b>faturamento total</b>, as metas e os indicadores vêm da aba RESUMÃO; o <b>faturamento do mês</b>, o <b>acumulado de maio</b> e as <b>A.Cs do período</b> vêm do Monitoramento Acumulado; o <b>farol de ECM</b> é recalculado aqui (a coluna vem vazia na planilha): vermelho abaixo de 25% da meta, amarelo abaixo de 50%, verde até a meta, BATEU acima.
+</div>
+</div>
+
+<script>
+const RAW_DEFAULT = {"fonte": "Planilha da Excelência · snapshot de 13/08/2026", "mesRef": 8, "ejs": [{"nome": "A.C.E. Consultoria", "regiao": "CENTRO-OESTE", "com": "Praieira", "c25": 5.0, "c26": 5.0, "meta": 1550000.0, "real": 506210.0, "metaMes": 129166.6667, "fatMesRes": 0.0, "csatMeta": 4.2, "coleta": 0.2097, "coletaTrack": 0.3939, "contratos": 41.0, "finalizados": 33.0, "ecmMeta": 0.75, "ecmReal": 0.985, "membros": 67.0, "membrosEcm": 66.0, "piReal": 0.0, "cMeta": 3750.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [129166.6667, 258333.3333, 387500.0, 516666.6667, 645833.3333, 775000.0, 904166.6667, 1033333.333, 1162500.0, 1291666.667, 1420833.333, 1550000.0], "situacao": "Vermelho", "cTrack": 5.0, "piRadar": "ATRASADO", "mon": {"1": {"fat": 106004.0, "acum": 106004.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 37500.0, "acum": 143504.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 62500.0, "acum": 206004.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 107710.0, "acum": 313714.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 192496.0, "acum": 506210.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 506210.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 506210.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 506210.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "ACETEC", "regiao": "NORTE", "com": "Tropicana", "c25": 3.0, "c26": 3.0, "meta": 25227.917, "real": 15788.73, "metaMes": 2102.326417, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.1429, "coletaTrack": 0.3333, "contratos": 5.0, "finalizados": 3.0, "ecmMeta": 0.75, "ecmReal": 0.0, "membros": 4.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 22881.89, "cPct": 0.0, "escalonadas": [2102.326417, 4204.652833, 6306.97925, 8409.305667, 10511.63208, 12613.9585, 14716.28492, 16818.61133, 18920.93775, 21023.26417, 23125.59058, 25227.917], "situacao": "Amarelo", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 3906.84, "acum": 3906.84, "ac": 1.0, "colabAc": 7093.16}, "2": {"fat": 0.0, "acum": 3906.84, "ac": 0.0, "colabAc": 7093.16}, "3": {"fat": 0.0, "acum": 3906.84, "ac": 0.0, "colabAc": 7093.16}, "4": {"fat": 6481.89, "acum": 10388.73, "ac": 1.0, "colabAc": 25611.27}, "5": {"fat": 5400.0, "acum": 15788.73, "ac": 3.0, "colabAc": 48303.4}, "6": {"fat": 0.0, "acum": 15788.73, "ac": 0.0, "colabAc": 48303.4}, "7": {"fat": 0.0, "acum": 15788.73, "ac": 0.0, "colabAc": 48303.4}, "8": {"fat": 0.0, "acum": 15788.73, "ac": 0.0, "colabAc": 48303.4}}}, {"nome": "Agreste Consultoria Jr.", "regiao": "LESTE", "com": "Capiba", "c25": 3.0, "c26": 4.0, "meta": 75600.0, "real": 52370.0, "metaMes": 6300.0, "fatMesRes": 7400.0, "csatMeta": 3.5, "coleta": 0.7143, "coletaTrack": 1.0, "contratos": 15.0, "finalizados": 10.0, "ecmMeta": 0.75, "ecmReal": 0.6, "membros": 35.0, "membrosEcm": 21.0, "piReal": 0.0, "cMeta": 29394.0, "cReal": 30100.0, "cPct": 1.024018507, "escalonadas": [6300.0, 12600.0, 18900.0, 25200.0, 31500.0, 37800.0, 44100.0, 50400.0, 56700.0, 63000.0, 69300.0, 75600.0], "situacao": "Verde", "cTrack": 4.0, "piRadar": "ATRASADO", "mon": {"1": {"fat": 10160.0, "acum": 10160.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 6310.0, "acum": 16470.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 2500.0, "acum": 18970.0, "ac": 1.0, "colabAc": 500.0}, "4": {"fat": 4900.0, "acum": 23870.0, "ac": 2.0, "colabAc": 1250.0}, "5": {"fat": 0.0, "acum": 23870.0, "ac": 0.0, "colabAc": 1250.0}, "6": {"fat": 5800.0, "acum": 29670.0, "ac": 0.0, "colabAc": 1250.0}, "7": {"fat": 9600.0, "acum": 39270.0, "ac": 1.0, "colabAc": 2450.0}, "8": {"fat": 7400.0, "acum": 46670.0, "ac": 2.0, "colabAc": 3150.0}}}, {"nome": "Arco Consultoria", "regiao": "SUL", "com": "Praieira", "c25": 5.0, "c26": 5.0, "meta": 175000.0, "real": 45288.4, "metaMes": 14583.33333, "fatMesRes": 3267.36, "csatMeta": 3.5, "coleta": 0.0667, "coletaTrack": 0.1111, "contratos": 10.0, "finalizados": 9.0, "ecmMeta": 0.75, "ecmReal": 0.765, "membros": 34.0, "membrosEcm": 26.0, "piReal": 0.0, "cMeta": 64186.17, "cReal": 0.0, "cPct": 0.0, "escalonadas": [14583.33333, 29166.66667, 43750.0, 58333.33333, 72916.66667, 87500.0, 102083.3333, 116666.6667, 131250.0, 145833.3333, 160416.6667, 175000.0], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM RADAR", "mon": {"1": {"fat": 14811.04, "acum": 14811.04, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 14800.0, "acum": 29611.04, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 2600.0, "acum": 32211.04, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 4910.0, "acum": 37121.04, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 1500.0, "acum": 38621.04, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 38621.04, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 3400.0, "acum": 42021.04, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 3267.36, "acum": 45288.4, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "BENS Soluções Sustentáveis", "regiao": "LESTE", "com": "Mandacaru", "c25": 1.0, "c26": 1.0, "meta": 1669.6, "real": 500.0, "metaMes": 139.1333333, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 1.0, "finalizados": 0.0, "ecmMeta": 0.5, "ecmReal": 0.5, "membros": 9.0, "membrosEcm": 5.0, "piReal": 0.0, "cMeta": 650.0, "cReal": 500.0, "cPct": 0.7692307692, "escalonadas": [139.1333333, 278.2666667, 417.4, 556.5333333, 695.6666667, 834.8, 973.9333333, 1113.066667, 1252.2, 1391.333333, 1530.466667, 1669.6], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 500.0, "acum": 500.0, "ac": 1.0, "colabAc": 9440.0}, "8": {"fat": 0.0, "acum": 500.0, "ac": 0.0, "colabAc": 9440.0}}}, {"nome": "Bevilaqua - Escritório Modelo Empresarial", "regiao": "CENTRO-OESTE", "com": "Capiba", "c25": 3.0, "c26": 4.0, "meta": 84036.5, "real": 36419.0, "metaMes": 7003.041667, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0263, "coletaTrack": 0.0323, "contratos": 19.0, "finalizados": 31.0, "ecmMeta": 0.75, "ecmReal": 0.509, "membros": 57.0, "membrosEcm": 29.0, "piReal": 0.0, "cMeta": 21475.95, "cReal": 0.0, "cPct": 0.0, "escalonadas": [7003.041667, 14006.08333, 21009.125, 28012.16667, 35015.20833, 42018.25, 49021.29167, 56024.33333, 63027.375, 70030.41667, 77033.45833, 84036.5], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM RADAR", "mon": {"1": {"fat": 7400.0, "acum": 7400.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 4100.0, "acum": 11500.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 1250.0, "acum": 12750.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 2380.0, "acum": 15130.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 13619.0, "acum": 28749.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 3470.0, "acum": 32219.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 4200.0, "acum": 36419.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 36419.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Minera Consultoria Júnior", "regiao": "LESTE", "com": "Incubadora", "c25": 2.0, "c26": 1.0, "meta": 1500.0, "real": 0.0, "metaMes": 125.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 0.0, "finalizados": 0.0, "ecmMeta": 0.5, "ecmReal": 1.0, "membros": 1.0, "membrosEcm": 1.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [125.0, 250.0, 375.0, 500.0, 625.0, 750.0, 875.0, 1000.0, 1125.0, 1250.0, 1375.0, 1500.0], "situacao": "Zerado", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Ciclo Consultoria", "regiao": "CENTRO-OESTE", "com": "Tropicana", "c25": 3.0, "c26": 1.0, "meta": 8790.0, "real": 12250.0, "metaMes": 732.5, "fatMesRes": 3000.0, "csatMeta": 4.0, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 4.0, "finalizados": 2.0, "ecmMeta": 0.75, "ecmReal": 0.52, "membros": 25.0, "membrosEcm": 13.0, "piReal": 0.0, "cMeta": 1312.5, "cReal": 0.0, "cPct": 0.0, "escalonadas": [732.5, 1465.0, 2197.5, 2930.0, 3662.5, 4395.0, 5127.5, 5860.0, 6592.5, 7325.0, 8057.5, 8790.0], "situacao": "Azul", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 8500.0, "acum": 8500.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 8500.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 8500.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 8500.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 750.0, "acum": 9250.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 9250.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 9250.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 3000.0, "acum": 12250.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "CITi", "regiao": "LESTE", "com": "Praieira", "c25": 5.0, "c26": 5.0, "meta": 407000.0, "real": 211197.25, "metaMes": 33916.66667, "fatMesRes": 0.0, "csatMeta": 3.6, "coleta": 0.1765, "coletaTrack": 0.2143, "contratos": 16.0, "finalizados": 14.0, "ecmMeta": 0.75, "ecmReal": 0.6, "membros": 90.0, "membrosEcm": 54.0, "piReal": 0.0, "cMeta": 16284.0, "cReal": 68000.0, "cPct": 4.175878163, "escalonadas": [33916.66667, 67833.33333, 101750.0, 135666.6667, 169583.3333, 203500.0, 237416.6667, 271333.3333, 305250.0, 339166.6667, 373083.3333, 407000.0], "situacao": "Vermelho", "cTrack": 4.0, "piRadar": "ATRASADO", "mon": {"1": {"fat": 5000.0, "acum": 5000.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 16200.0, "acum": 21200.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 45650.0, "acum": 66850.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 45650.0, "acum": 112500.0, "ac": 1.0, "colabAc": 1000.0}, "5": {"fat": 98697.25, "acum": 211197.25, "ac": 1.0, "colabAc": 18000.0}, "6": {"fat": 0.0, "acum": 211197.25, "ac": 0.0, "colabAc": 18000.0}, "7": {"fat": 0.0, "acum": 211197.25, "ac": 0.0, "colabAc": 18000.0}, "8": {"fat": 0.0, "acum": 211197.25, "ac": 0.0, "colabAc": 18000.0}}}, {"nome": "Delta Odontologia", "regiao": "LESTE", "com": "Mandacaru", "c25": 1.0, "c26": 1.0, "meta": 1500.0, "real": 50.0, "metaMes": 125.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 1.0, "finalizados": 1.0, "ecmMeta": 0.5, "ecmReal": 0.0, "membros": 16.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [125.0, 250.0, 375.0, 500.0, 625.0, 750.0, 875.0, 1000.0, 1125.0, 1250.0, 1375.0, 1500.0], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 50.0, "acum": 50.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 50.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 50.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 50.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Dipolum Consultoria", "regiao": "LESTE", "com": "Mandacaru", "c25": 1.0, "c26": 1.0, "meta": 2185.0, "real": 600.0, "metaMes": 182.0833333, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 1.0, "coletaTrack": 1.0, "contratos": 1.0, "finalizados": 1.0, "ecmMeta": 0.5, "ecmReal": 0.167, "membros": 6.0, "membrosEcm": 1.0, "piReal": 0.0, "cMeta": 500.0, "cReal": 600.0, "cPct": 1.2, "escalonadas": [182.0833333, 364.1666667, 546.25, 728.3333333, 910.4166667, 1092.5, 1274.583333, 1456.666667, 1638.75, 1820.833333, 2002.916667, 2185.0], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 600.0, "acum": 600.0, "ac": 1.0, "colabAc": 1850.0}, "6": {"fat": 0.0, "acum": 600.0, "ac": 0.0, "colabAc": 1850.0}, "7": {"fat": 0.0, "acum": 600.0, "ac": 0.0, "colabAc": 1850.0}, "8": {"fat": 0.0, "acum": 600.0, "ac": 0.0, "colabAc": 1850.0}}}, {"nome": "EIXO Consultoria", "regiao": "CENTRO-OESTE", "com": "Praieira", "c25": 4.0, "c26": 5.0, "meta": 100800.0, "real": 17311.64, "metaMes": 8400.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.7143, "coletaTrack": 0.7143, "contratos": 6.0, "finalizados": 7.0, "ecmMeta": 0.75, "ecmReal": 0.967, "membros": 30.0, "membrosEcm": 29.0, "piReal": 0.0, "cMeta": 500.0, "cReal": 2084.25, "cPct": 4.1685, "escalonadas": [8400.0, 16800.0, 25200.0, 33600.0, 42000.0, 50400.0, 58800.0, 67200.0, 75600.0, 84000.0, 92400.0, 100800.0], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "ATRASADO", "mon": {"1": {"fat": 3184.29, "acum": 3184.29, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 2084.25, "acum": 5268.54, "ac": 1.0, "colabAc": 6375.0}, "3": {"fat": 0.0, "acum": 5268.54, "ac": 0.0, "colabAc": 6375.0}, "4": {"fat": 4749.27, "acum": 10017.81, "ac": 0.0, "colabAc": 6375.0}, "5": {"fat": 7293.83, "acum": 17311.64, "ac": 0.0, "colabAc": 6375.0}, "6": {"fat": 0.0, "acum": 17311.64, "ac": 0.0, "colabAc": 6375.0}, "7": {"fat": 0.0, "acum": 17311.64, "ac": 0.0, "colabAc": 6375.0}, "8": {"fat": 0.0, "acum": 17311.64, "ac": 0.0, "colabAc": 6375.0}}}, {"nome": "Elementus Júnior Consultoria", "regiao": "SUL", "com": "Capiba", "c25": 4.0, "c26": 4.0, "meta": 85000.0, "real": 22607.45, "metaMes": 7083.333333, "fatMesRes": 0.0, "csatMeta": 4.0, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 3.0, "finalizados": 0.0, "ecmMeta": 0.7, "ecmReal": 1.0, "membros": 19.0, "membrosEcm": 19.0, "piReal": 0.0, "cMeta": 23085.62, "cReal": 21057.45, "cPct": 0.9121457427, "escalonadas": [7083.333333, 14166.66667, 21250.0, 28333.33333, 35416.66667, 42500.0, 49583.33333, 56666.66667, 63750.0, 70833.33333, 77916.66667, 85000.0], "situacao": "Vermelho", "cTrack": 3.0, "piRadar": "SEM RADAR", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 200.0, "acum": 200.0, "ac": 1.0, "colabAc": 673.6}, "4": {"fat": 0.0, "acum": 200.0, "ac": 0.0, "colabAc": 673.6}, "5": {"fat": 22407.45, "acum": 22607.45, "ac": 1.0, "colabAc": 1563.6}, "6": {"fat": 0.0, "acum": 22607.45, "ac": 0.0, "colabAc": 1563.6}, "7": {"fat": 0.0, "acum": 22607.45, "ac": 0.0, "colabAc": 1563.6}, "8": {"fat": 0.0, "acum": 22607.45, "ac": 0.0, "colabAc": 1563.6}}}, {"nome": "Empresa Júnior UNICAP", "regiao": "LESTE", "com": "Praieira", "c25": 4.0, "c26": 5.0, "meta": 165000.0, "real": 96741.0, "metaMes": 13750.0, "fatMesRes": 0.0, "csatMeta": 4.0, "coleta": 0.2174, "coletaTrack": 0.3571, "contratos": 16.0, "finalizados": 14.0, "ecmMeta": 0.75, "ecmReal": 0.846, "membros": 39.0, "membrosEcm": 33.0, "piReal": 0.0, "cMeta": 2000.0, "cReal": 750.0, "cPct": 0.375, "escalonadas": [13750.0, 27500.0, 41250.0, 55000.0, 68750.0, 82500.0, 96250.0, 110000.0, 123750.0, 137500.0, 151250.0, 165000.0], "situacao": "Amarelo", "cTrack": 3.0, "piRadar": "ATRASADO", "mon": {"1": {"fat": 8685.0, "acum": 8685.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 8685.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 786.0, "acum": 9471.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 3000.0, "acum": 12471.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 57950.0, "acum": 70421.0, "ac": 1.0, "colabAc": 6250.0}, "6": {"fat": 10600.0, "acum": 81021.0, "ac": 0.0, "colabAc": 6250.0}, "7": {"fat": 15720.0, "acum": 96741.0, "ac": 0.0, "colabAc": 6250.0}, "8": {"fat": 0.0, "acum": 96741.0, "ac": 0.0, "colabAc": 6250.0}}}, {"nome": "Ethos Consultoria Jr.", "regiao": "CENTRO-OESTE", "com": "Tropicana", "c25": 2.0, "c26": 1.0, "meta": 12850.0, "real": 1720.0, "metaMes": 1070.833333, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.6, "coletaTrack": 0.6, "contratos": 4.0, "finalizados": 5.0, "ecmMeta": 0.664, "ecmReal": 0.762, "membros": 21.0, "membrosEcm": 16.0, "piReal": 0.0, "cMeta": 3350.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [1070.833333, 2141.666667, 3212.5, 4283.333333, 5354.166667, 6425.0, 7495.833333, 8566.666667, 9637.5, 10708.33333, 11779.16667, 12850.0], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 320.0, "acum": 320.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 400.0, "acum": 720.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 1000.0, "acum": 1720.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 1720.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 1720.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 1720.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 1720.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 1720.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "FCAP JR. Consultoria", "regiao": "CENTRO-OESTE", "com": "Praieira", "c25": 5.0, "c26": 5.0, "meta": 1024570.2, "real": 542910.0, "metaMes": 85380.85, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.3273, "coletaTrack": 0.5, "contratos": 40.0, "finalizados": 36.0, "ecmMeta": 0.75, "ecmReal": 0.559, "membros": 68.0, "membrosEcm": 38.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 6250.0, "cPct": 0.0, "escalonadas": [85380.85, 170761.7, 256142.55, 341523.4, 426904.25, 512285.1, 597665.95, 683046.8, 768427.65, 853808.5, 939189.35, 1024570.2], "situacao": "Vermelho", "cTrack": 5.0, "piRadar": "ATRASADO", "mon": {"1": {"fat": 52700.0, "acum": 52700.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 12500.0, "acum": 65200.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 173360.0, "acum": 238560.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 27000.0, "acum": 265560.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 128130.0, "acum": 393690.0, "ac": 1.0, "colabAc": 750.0}, "6": {"fat": 69700.0, "acum": 463390.0, "ac": 0.0, "colabAc": 750.0}, "7": {"fat": 79520.0, "acum": 542910.0, "ac": 0.0, "colabAc": 750.0}, "8": {"fat": 0.0, "acum": 542910.0, "ac": 0.0, "colabAc": 750.0}}}, {"nome": "Florar Consultoria Ambiental Jr.", "regiao": "LESTE", "com": "Tropicana", "c25": 1.0, "c26": 1.0, "meta": 15561.8, "real": 2862.0, "metaMes": 1296.816667, "fatMesRes": 2812.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 2.0, "finalizados": 1.0, "ecmMeta": 0.5, "ecmReal": 0.133, "membros": 15.0, "membrosEcm": 2.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [1296.816667, 2593.633333, 3890.45, 5187.266667, 6484.083333, 7780.9, 9077.716667, 10374.53333, 11671.35, 12968.16667, 14264.98333, 15561.8], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 50.0, "acum": 50.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 50.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 50.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 2812.0, "acum": 2862.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "FORMULAR Jr.", "regiao": "SUL", "com": "Mandacaru", "c25": 1.0, "c26": 1.0, "meta": 12316.5, "real": 2500.0, "metaMes": 1026.375, "fatMesRes": 0.0, "csatMeta": 4.0, "coleta": 0.2, "coletaTrack": 0.2, "contratos": 5.0, "finalizados": 5.0, "ecmMeta": 0.61, "ecmReal": 0.0, "membros": 19.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 500.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [1026.375, 2052.75, 3079.125, 4105.5, 5131.875, 6158.25, 7184.625, 8211.0, 9237.375, 10263.75, 11290.125, 12316.5], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 1740.0, "acum": 1740.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 1740.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 110.0, "acum": 1850.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 1850.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 100.0, "acum": 1950.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 550.0, "acum": 2500.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 2500.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 2500.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "BioTech Consultoria", "regiao": "NORTE", "com": "Incubadora", "c25": 1.0, "c26": 1.0, "meta": 2075.75, "real": 0.0, "metaMes": 172.9791667, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 0.0, "finalizados": 0.0, "ecmMeta": 0.51, "ecmReal": 0.0, "membros": 0.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [172.9791667, 345.9583333, 518.9375, 691.9166667, 864.8958333, 1037.875, 1210.854167, 1383.833333, 1556.8125, 1729.791667, 1902.770833, 2075.75], "situacao": "Zerado", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Liga Consultoria", "regiao": "LESTE", "com": "Incubadora", "c25": 1.0, "c26": 1.0, "meta": 1500.0, "real": 0.0, "metaMes": 125.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 0.0, "finalizados": 0.0, "ecmMeta": 0.5, "ecmReal": 0.0, "membros": 0.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [125.0, 250.0, 375.0, 500.0, 625.0, 750.0, 875.0, 1000.0, 1125.0, 1250.0, 1375.0, 1500.0], "situacao": "Zerado", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Ginga Design Empresa Júnior", "regiao": "SUL", "com": "Tropicana", "c25": 1.0, "c26": 2.0, "meta": 14500.0, "real": 8956.0, "metaMes": 1208.333333, "fatMesRes": 2852.0, "csatMeta": 3.5, "coleta": 0.5455, "coletaTrack": 0.8571, "contratos": 8.0, "finalizados": 7.0, "ecmMeta": 0.75, "ecmReal": 0.435, "membros": 23.0, "membrosEcm": 10.0, "piReal": 0.0, "cMeta": 2625.0, "cReal": 2625.0, "cPct": 1.0, "escalonadas": [1208.333333, 2416.666667, 3625.0, 4833.333333, 6041.666667, 7250.0, 8458.333333, 9666.666667, 10875.0, 12083.33333, 13291.66667, 14500.0], "situacao": "Amarelo", "cTrack": 2.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 1700.0, "acum": 1700.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 129.0, "acum": 1829.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 1829.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 1829.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 2450.0, "acum": 4279.0, "ac": 1.0, "colabAc": 5500.0}, "6": {"fat": 0.0, "acum": 4279.0, "ac": 0.0, "colabAc": 5500.0}, "7": {"fat": 1825.0, "acum": 6104.0, "ac": 2.0, "colabAc": 24415.0}, "8": {"fat": 2852.0, "acum": 8956.0, "ac": 0.0, "colabAc": 24415.0}}}, {"nome": "Inovagro Jr.", "regiao": "LESTE", "com": "Tropicana", "c25": 2.0, "c26": 3.0, "meta": 18276.5, "real": 18805.0, "metaMes": 1523.041667, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.25, "coletaTrack": 1.0, "contratos": 4.0, "finalizados": 1.0, "ecmMeta": 0.75, "ecmReal": 0.417, "membros": 12.0, "membrosEcm": 5.0, "piReal": 0.0, "cMeta": 13452.0, "cReal": 9705.0, "cPct": 0.7214540589, "escalonadas": [1523.041667, 3046.083333, 4569.125, 6092.166667, 7615.208333, 9138.25, 10661.29167, 12184.33333, 13707.375, 15230.41667, 16753.45833, 18276.5], "situacao": "Azul", "cTrack": 3.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 7500.0, "acum": 7500.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 7500.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 7500.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 7500.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 7500.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 890.0, "acum": 8390.0, "ac": 1.0, "colabAc": 20857.45}, "7": {"fat": 10415.0, "acum": 18805.0, "ac": 1.0, "colabAc": 21982.45}, "8": {"fat": 0.0, "acum": 18805.0, "ac": 0.0, "colabAc": 21982.45}}}, {"nome": "Integrar Consultoria Jr.", "regiao": "LESTE", "com": "Tropicana", "c25": 1.0, "c26": 1.0, "meta": 5200.0, "real": 1000.0, "metaMes": 433.3333333, "fatMesRes": 0.0, "csatMeta": 4.0, "coleta": 0.3333, "coletaTrack": 0.3333, "contratos": 2.0, "finalizados": 3.0, "ecmMeta": 0.5, "ecmReal": 0.045, "membros": 22.0, "membrosEcm": 1.0, "piReal": 0.0, "cMeta": 1259.7, "cReal": 1000.0, "cPct": 0.7938398031, "escalonadas": [433.3333333, 866.6666667, 1300.0, 1733.333333, 2166.666667, 2600.0, 3033.333333, 3466.666667, 3900.0, 4333.333333, 4766.666667, 5200.0], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 500.0, "acum": 500.0, "ac": 1.0, "colabAc": 2500.0}, "4": {"fat": 500.0, "acum": 1000.0, "ac": 1.0, "colabAc": 5000.0}, "5": {"fat": 0.0, "acum": 1000.0, "ac": 0.0, "colabAc": 5000.0}, "6": {"fat": 0.0, "acum": 1000.0, "ac": 0.0, "colabAc": 5000.0}, "7": {"fat": 0.0, "acum": 1000.0, "ac": 0.0, "colabAc": 5000.0}, "8": {"fat": 0.0, "acum": 1000.0, "ac": 0.0, "colabAc": 5000.0}}}, {"nome": "Nuinova Júnior", "regiao": "LESTE", "com": "Incubadora", "c25": 1.0, "c26": 1.0, "meta": 1500.0, "real": 0.0, "metaMes": 125.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 0.0, "finalizados": 0.0, "ecmMeta": 0.5, "ecmReal": 0.0, "membros": 0.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [125.0, 250.0, 375.0, 500.0, 625.0, 750.0, 875.0, 1000.0, 1125.0, 1250.0, 1375.0, 1500.0], "situacao": "Zerado", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Líder Engenharia Jr", "regiao": "LESTE", "com": "Mandacaru", "c25": 1.0, "c26": 1.0, "meta": 5750.0, "real": 5000.0, "metaMes": 479.1666667, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 1.0, "finalizados": 1.0, "ecmMeta": 0.5, "ecmReal": 0.0, "membros": 1.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [479.1666667, 958.3333333, 1437.5, 1916.666667, 2395.833333, 2875.0, 3354.166667, 3833.333333, 4312.5, 4791.666667, 5270.833333, 5750.0], "situacao": "Verde", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 5000.0, "acum": 5000.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 5000.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 5000.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 5000.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 5000.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Poli Júnior Engenharia", "regiao": "LESTE", "com": "Praieira", "c25": 4.0, "c26": 4.0, "meta": 109500.0, "real": 127335.29, "metaMes": 9125.0, "fatMesRes": 10295.31, "csatMeta": 4.0, "coleta": 0.375, "coletaTrack": 0.75, "contratos": 7.0, "finalizados": 4.0, "ecmMeta": 0.75, "ecmReal": 0.822, "membros": 45.0, "membrosEcm": 37.0, "piReal": 1.0, "cMeta": 39459.84, "cReal": 108629.26, "cPct": 2.752906753, "escalonadas": [9125.0, 18250.0, 27375.0, 36500.0, 45625.0, 54750.0, 63875.0, 73000.0, 82125.0, 91250.0, 100375.0, 109500.0], "situacao": "Azul", "cTrack": 4.0, "piRadar": "ENTREGUE", "mon": {"1": {"fat": 112729.26, "acum": 112729.26, "ac": 1.0, "colabAc": 4100.0}, "2": {"fat": 3500.0, "acum": 116229.26, "ac": 0.0, "colabAc": 4100.0}, "3": {"fat": 0.0, "acum": 116229.26, "ac": 0.0, "colabAc": 4100.0}, "4": {"fat": 0.0, "acum": 116229.26, "ac": 0.0, "colabAc": 4100.0}, "5": {"fat": 810.72, "acum": 117039.98, "ac": 0.0, "colabAc": 4100.0}, "6": {"fat": 0.0, "acum": 117039.98, "ac": 0.0, "colabAc": 4100.0}, "7": {"fat": 0.0, "acum": 117039.98, "ac": 0.0, "colabAc": 4100.0}, "8": {"fat": 10295.31, "acum": 127335.29, "ac": 0.0, "colabAc": 4100.0}}}, {"nome": "Pórtico Jr Soluções em Engenharia Civil", "regiao": "SUL", "com": "Tropicana", "c25": 3.0, "c26": 3.0, "meta": 29100.0, "real": 32289.97, "metaMes": 2425.0, "fatMesRes": 8548.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 8.0, "finalizados": 7.0, "ecmMeta": 0.716, "ecmReal": 0.716, "membros": 39.0, "membrosEcm": 28.0, "piReal": 0.0, "cMeta": 3350.0, "cReal": 3948.0, "cPct": 1.178507463, "escalonadas": [2425.0, 4850.0, 7275.0, 9700.0, 12125.0, 14550.0, 16975.0, 19400.0, 21825.0, 24250.0, 26675.0, 29100.0], "situacao": "Azul", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 13588.66, "acum": 13588.66, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 10153.31, "acum": 23741.97, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 23741.97, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 8548.0, "acum": 32289.97, "ac": 1.0, "colabAc": 5785.0}}}, {"nome": "AQUA Jr. Soluções em Engenharias", "regiao": "LESTE", "com": "Incubadora", "c25": 1.0, "c26": 1.0, "meta": 1500.0, "real": 0.0, "metaMes": 125.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 0.0, "finalizados": 0.0, "ecmMeta": 0.51, "ecmReal": 0.0, "membros": 0.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [125.0, 250.0, 375.0, 500.0, 625.0, 750.0, 875.0, 1000.0, 1125.0, 1250.0, 1375.0, 1500.0], "situacao": "Zerado", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Potencialize Projetos e Consultoria Jr. de Engenharia", "regiao": "LESTE", "com": "Mandacaru", "c25": 1.0, "c26": 1.0, "meta": 7066.75, "real": 2428.04, "metaMes": 588.8958333, "fatMesRes": 2400.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 2.0, "finalizados": 3.0, "ecmMeta": 0.51, "ecmReal": 0.714, "membros": 14.0, "membrosEcm": 10.0, "piReal": 0.0, "cMeta": 500.0, "cReal": 2400.0, "cPct": 4.8, "escalonadas": [588.8958333, 1177.791667, 1766.6875, 2355.583333, 2944.479167, 3533.375, 4122.270833, 4711.166667, 5300.0625, 5888.958333, 6477.854167, 7066.75], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 28.04, "acum": 28.04, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 28.04, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 28.04, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 28.04, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 28.04, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 2400.0, "acum": 2428.04, "ac": 1.0, "colabAc": 11933.0}}}, {"nome": "Preserve Jr.", "regiao": "LESTE", "com": "Mandacaru", "c25": 1.0, "c26": 2.0, "meta": 4328.06, "real": 6375.0, "metaMes": 360.6716667, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 1.0, "finalizados": 2.0, "ecmMeta": 0.75, "ecmReal": 0.0, "membros": 2.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 6375.0, "cPct": 0.0, "escalonadas": [360.6716667, 721.3433333, 1082.015, 1442.686667, 1803.358333, 2164.03, 2524.701667, 2885.373333, 3246.045, 3606.716667, 3967.388333, 4328.06], "situacao": "Azul", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 6375.0, "acum": 6375.0, "ac": 1.0, "colabAc": 2084.25}, "3": {"fat": 0.0, "acum": 6375.0, "ac": 0.0, "colabAc": 2084.25}, "4": {"fat": 0.0, "acum": 6375.0, "ac": 0.0, "colabAc": 2084.25}, "5": {"fat": 0.0, "acum": 6375.0, "ac": 0.0, "colabAc": 2084.25}, "6": {"fat": 0.0, "acum": 6375.0, "ac": 0.0, "colabAc": 2084.25}, "7": {"fat": 0.0, "acum": 6375.0, "ac": 0.0, "colabAc": 2084.25}, "8": {"fat": 0.0, "acum": 6375.0, "ac": 0.0, "colabAc": 2084.25}}}, {"nome": "Prisma Consultoria e Serviços em Engenharia", "regiao": "CENTRO-OESTE", "com": "Capiba", "c25": 4.0, "c26": 4.0, "meta": 75450.0, "real": 8710.0, "metaMes": 6287.5, "fatMesRes": 3385.0, "csatMeta": 3.5, "coleta": 0.2727, "coletaTrack": 0.3, "contratos": 7.0, "finalizados": 10.0, "ecmMeta": 0.75, "ecmReal": 0.458, "membros": 24.0, "membrosEcm": 11.0, "piReal": 0.0, "cMeta": 37631.96, "cReal": 3385.0, "cPct": 0.08995013813, "escalonadas": [6287.5, 12575.0, 18862.5, 25150.0, 31437.5, 37725.0, 44012.5, 50300.0, 56587.5, 62875.0, 69162.5, 75450.0], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM RADAR", "mon": {"1": {"fat": 200.0, "acum": 200.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 200.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 1800.0, "acum": 2000.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 700.0, "acum": 2700.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 1000.0, "acum": 3700.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 1625.0, "acum": 5325.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 5325.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 3385.0, "acum": 8710.0, "ac": 1.0, "colabAc": 10948.0}}}, {"nome": "FASUP Jr.", "regiao": "LESTE", "com": "Incubadora", "c25": 1.0, "c26": 1.0, "meta": 1500.0, "real": 0.0, "metaMes": 125.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 0.0, "finalizados": 0.0, "ecmMeta": 0.5, "ecmReal": 0.0, "membros": 0.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [125.0, 250.0, 375.0, 500.0, 625.0, 750.0, 875.0, 1000.0, 1125.0, 1250.0, 1375.0, 1500.0], "situacao": "Zerado", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Projetos Jr. Consultoria", "regiao": "CENTRO-OESTE", "com": "Capiba", "c25": 2.0, "c26": 3.0, "meta": 35800.0, "real": 21990.0, "metaMes": 2983.333333, "fatMesRes": 0.0, "csatMeta": 4.0, "coleta": 0.0909, "coletaTrack": 0.125, "contratos": 5.0, "finalizados": 8.0, "ecmMeta": 0.75, "ecmReal": 0.853, "membros": 34.0, "membrosEcm": 29.0, "piReal": 0.0, "cMeta": 1687.5, "cReal": 5500.0, "cPct": 3.259259259, "escalonadas": [2983.333333, 5966.666667, 8950.0, 11933.33333, 14916.66667, 17900.0, 20883.33333, 23866.66667, 26850.0, 29833.33333, 32816.66667, 35800.0], "situacao": "Amarelo", "cTrack": 1.0, "piRadar": "SEM RADAR", "mon": {"1": {"fat": 8290.0, "acum": 8290.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 8290.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 2100.0, "acum": 10390.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 3800.0, "acum": 14190.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 7800.0, "acum": 21990.0, "ac": 1.0, "colabAc": 800.0}, "6": {"fat": 0.0, "acum": 21990.0, "ac": 0.0, "colabAc": 800.0}, "7": {"fat": 0.0, "acum": 21990.0, "ac": 0.0, "colabAc": 800.0}, "8": {"fat": 0.0, "acum": 21990.0, "ac": 0.0, "colabAc": 800.0}}}, {"nome": "Fusão Consultoria Júnior", "regiao": "SUL", "com": "Incubadora", "c25": 1.0, "c26": 1.0, "meta": 1500.0, "real": 0.0, "metaMes": 125.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 0.0, "finalizados": 0.0, "ecmMeta": 0.5, "ecmReal": 0.0, "membros": 0.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [125.0, 250.0, 375.0, 500.0, 625.0, 750.0, 875.0, 1000.0, 1125.0, 1250.0, 1375.0, 1500.0], "situacao": "Zerado", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Prospere", "regiao": "LESTE", "com": "Mandacaru", "c25": 0.0, "c26": 1.0, "meta": 1500.0, "real": 2988.0, "metaMes": 125.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.25, "coletaTrack": 0.25, "contratos": 4.0, "finalizados": 4.0, "ecmMeta": 0.51, "ecmReal": 0.222, "membros": 9.0, "membrosEcm": 2.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 400.0, "cPct": 0.0, "escalonadas": [125.0, 250.0, 375.0, 500.0, 625.0, 750.0, 875.0, 1000.0, 1125.0, 1250.0, 1375.0, 1500.0], "situacao": "Azul", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 1200.0, "acum": 1200.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 1788.0, "acum": 2988.0, "ac": 1.0, "colabAc": 250.0}, "6": {"fat": 0.0, "acum": 2988.0, "ac": 0.0, "colabAc": 250.0}, "7": {"fat": 0.0, "acum": 2988.0, "ac": 0.0, "colabAc": 250.0}, "8": {"fat": 0.0, "acum": 2988.0, "ac": 0.0, "colabAc": 250.0}}}, {"nome": "Seed a Bit Tecnologia", "regiao": "LESTE", "com": "Capiba", "c25": 3.0, "c26": 4.0, "meta": 98714.5, "real": 92550.0, "metaMes": 8226.208333, "fatMesRes": 22200.0, "csatMeta": 3.5, "coleta": 0.6316, "coletaTrack": 0.9231, "contratos": 19.0, "finalizados": 13.0, "ecmMeta": 0.75, "ecmReal": 0.69, "membros": 42.0, "membrosEcm": 29.0, "piReal": 0.0, "cMeta": 55609.12, "cReal": 26950.0, "cPct": 0.4846327365, "escalonadas": [8226.208333, 16452.41667, 24678.625, 32904.83333, 41131.04167, 49357.25, 57583.45833, 65809.66667, 74035.875, 82262.08333, 90488.29167, 98714.5], "situacao": "Verde", "cTrack": 5.0, "piRadar": "ATRASADO", "mon": {"1": {"fat": 1500.0, "acum": 1500.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 1500.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 6400.0, "acum": 7900.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 11150.0, "acum": 19050.0, "ac": 2.0, "colabAc": 3300.0}, "5": {"fat": 33300.0, "acum": 52350.0, "ac": 3.0, "colabAc": 5400.0}, "6": {"fat": 2100.0, "acum": 54450.0, "ac": 0.0, "colabAc": 5400.0}, "7": {"fat": 15900.0, "acum": 70350.0, "ac": 0.0, "colabAc": 5400.0}, "8": {"fat": 22200.0, "acum": 92550.0, "ac": 0.0, "colabAc": 5400.0}}}, {"nome": "FuturUp", "regiao": "CENTRO-OESTE", "com": "Incubadora", "c25": 1.0, "c26": 1.0, "meta": 1500.0, "real": 0.0, "metaMes": 125.0, "fatMesRes": 0.0, "csatMeta": 5.0, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 0.0, "finalizados": 0.0, "ecmMeta": 0.5, "ecmReal": 0.0, "membros": 12.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 500.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [125.0, 250.0, 375.0, 500.0, 625.0, 750.0, 875.0, 1000.0, 1125.0, 1250.0, 1375.0, 1500.0], "situacao": "Zerado", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Volts Projetos e Consultoria Jr", "regiao": "LESTE", "com": "Capiba", "c25": 1.0, "c26": 2.0, "meta": 13500.0, "real": 49094.81, "metaMes": 1125.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.375, "coletaTrack": 0.4286, "contratos": 7.0, "finalizados": 7.0, "ecmMeta": 0.75, "ecmReal": 1.0, "membros": 16.0, "membrosEcm": 16.0, "piReal": 0.0, "cMeta": 12980.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [1125.0, 2250.0, 3375.0, 4500.0, 5625.0, 6750.0, 7875.0, 9000.0, 10125.0, 11250.0, 12375.0, 13500.0], "situacao": "Azul", "cTrack": 2.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 7879.28, "acum": 7879.28, "ac": 1.0, "colabAc": 700.0}, "2": {"fat": 13325.94, "acum": 21205.22, "ac": 1.0, "colabAc": 1900.0}, "3": {"fat": 7100.0, "acum": 28305.22, "ac": 1.0, "colabAc": 2400.0}, "4": {"fat": 6317.4, "acum": 34622.62, "ac": 1.0, "colabAc": 2900.0}, "5": {"fat": 5934.37, "acum": 40556.99, "ac": 1.0, "colabAc": 3400.0}, "6": {"fat": 8137.82, "acum": 48694.81, "ac": 0.0, "colabAc": 3400.0}, "7": {"fat": 400.0, "acum": 49094.81, "ac": 0.0, "colabAc": 3400.0}, "8": {"fat": 0.0, "acum": 49094.81, "ac": 0.0, "colabAc": 3400.0}}}, {"nome": "Ambar Consultoria Junior", "regiao": "LESTE", "com": "Incubadora", "c25": 1.0, "c26": 1.0, "meta": 4887.5, "real": 4230.0, "metaMes": 407.2916667, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.5, "coletaTrack": 0.5, "contratos": 2.0, "finalizados": 2.0, "ecmMeta": 0.5, "ecmReal": 0.25, "membros": 4.0, "membrosEcm": 1.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [407.2916667, 814.5833333, 1221.875, 1629.166667, 2036.458333, 2443.75, 2851.041667, 3258.333333, 3665.625, 4072.916667, 4480.208333, 4887.5], "situacao": "Verde", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 2030.0, "acum": 2030.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 2030.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 2200.0, "acum": 4230.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 4230.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 4230.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 4230.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 4230.0, "ac": 0.0, "colabAc": 0.0}}}, {"nome": "Inova Tech Júnior", "regiao": "LESTE", "com": "Incubadora", "c25": 1.0, "c26": 1.0, "meta": 3335.0, "real": 900.0, "metaMes": 277.9166667, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 1.0, "finalizados": 0.0, "ecmMeta": 0.5, "ecmReal": 0.0, "membros": 4.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 900.0, "cPct": 0.0, "escalonadas": [277.9166667, 555.8333333, 833.75, 1111.666667, 1389.583333, 1667.5, 1945.416667, 2223.333333, 2501.25, 2779.166667, 3057.083333, 3335.0], "situacao": "Vermelho", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 900.0, "acum": 900.0, "ac": 1.0, "colabAc": 24850.0}, "6": {"fat": 0.0, "acum": 900.0, "ac": 0.0, "colabAc": 24850.0}, "7": {"fat": 0.0, "acum": 900.0, "ac": 0.0, "colabAc": 24850.0}, "8": {"fat": 0.0, "acum": 900.0, "ac": 0.0, "colabAc": 24850.0}}}, {"nome": "Watt Consultoria", "regiao": "CENTRO-OESTE", "com": "Praieira", "c25": 5.0, "c26": 5.0, "meta": 170000.11, "real": 76142.0, "metaMes": 14166.67583, "fatMesRes": 0.0, "csatMeta": 4.2, "coleta": 0.75, "coletaTrack": 0.9231, "contratos": 9.0, "finalizados": 13.0, "ecmMeta": 0.75, "ecmReal": 0.87, "membros": 46.0, "membrosEcm": 40.0, "piReal": 0.0, "cMeta": 37632.0, "cReal": 42592.0, "cPct": 1.131802721, "escalonadas": [14166.67583, 28333.35167, 42500.0275, 56666.70333, 70833.37917, 85000.055, 99166.73083, 113333.4067, 127500.0825, 141666.7583, 155833.4342, 170000.11], "situacao": "Vermelho", "cTrack": 5.0, "piRadar": "ATRASADO", "mon": {"1": {"fat": 18000.0, "acum": 18000.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 4900.0, "acum": 22900.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 45942.0, "acum": 68842.0, "ac": 1.0, "colabAc": 500.0}, "4": {"fat": 0.0, "acum": 68842.0, "ac": 0.0, "colabAc": 500.0}, "5": {"fat": 4200.0, "acum": 73042.0, "ac": 0.0, "colabAc": 500.0}, "6": {"fat": 0.0, "acum": 73042.0, "ac": 0.0, "colabAc": 500.0}, "7": {"fat": 3100.0, "acum": 76142.0, "ac": 0.0, "colabAc": 500.0}, "8": {"fat": 0.0, "acum": 76142.0, "ac": 0.0, "colabAc": 500.0}}}, {"nome": "Paraser Consultoria Junior", "regiao": "CENTRO-OESTE", "com": "Incubadora", "c25": 0.0, "c26": 1.0, "meta": 1500.0, "real": 0.0, "metaMes": 125.0, "fatMesRes": 0.0, "csatMeta": 3.5, "coleta": 0.0, "coletaTrack": 0.0, "contratos": 0.0, "finalizados": 0.0, "ecmMeta": 0.75, "ecmReal": 0.0, "membros": 3.0, "membrosEcm": 0.0, "piReal": 0.0, "cMeta": 0.0, "cReal": 0.0, "cPct": 0.0, "escalonadas": [125.0, 250.0, 375.0, 500.0, 625.0, 750.0, 875.0, 1000.0, 1125.0, 1250.0, 1375.0, 1500.0], "situacao": "Zerado", "cTrack": 1.0, "piRadar": "SEM PI", "mon": {"1": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "2": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "3": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "4": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "5": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "6": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "7": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}, "8": {"fat": 0.0, "acum": 0.0, "ac": 0.0, "colabAc": 0.0}}}]};
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const COM_METAS={
+  'Mandacaru':{verde:4,ecm:5,colab:4,sig:6},
+  'Tropicana':{verde:5,ecm:5,colab:4,sig:6},
+  'Capiba':   {verde:4,ecm:7,colab:4,sig:5},
+  'Praieira': {verde:5,ecm:8,colab:5,sig:5}
+};
+const PESO={1:.30, 2:.25, 3:.15, 4:.15, 5:.15};   // peso de cada cluster no Saldo de Evolução
+let RAW = RAW_DEFAULT, MODEL = null;
+
+/* ============ leitura da planilha ============ */
+const norm = s => String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
+const num = v => { const n = typeof v==='number'? v : parseFloat(String(v??'').replace(/\./g,'').replace(',','.')); return isFinite(n)? n : 0; };
+
+function findSheet(wb, frag){
+  const k = wb.SheetNames.find(n => norm(n).includes(frag));
+  if(!k) throw new Error('Aba não encontrada: '+frag);
+  const sh = wb.Sheets[k];
+  // força a origem em A1: sem isso, colunas vazias à esquerda deslocam todos os índices
+  const rg = XLSX.utils.decode_range(sh['!ref']); rg.s.c = 0; rg.s.r = 0;
+  return XLSX.utils.sheet_to_json(sh, {header:1, defval:null, raw:true, range:rg});
+}
+function parseWorkbook(wb){
+  const R = findSheet(wb,'resumao');            // RESUMÃO: metas, indicadores e comunidade
+  const M = findSheet(wb,'mente da ddr');       // MENTE DA DDR: tracking de cluster
+  const A = findSheet(wb,'monitoramento acumulado'); // série mensal
+
+  // tracking de cluster + aposta de PI, por EJ
+  const trk={};
+  for(let i=6;i<M.length;i++){ const r=M[i]||[]; if(!r[2]) continue;
+    const k=norm(r[2]); if(k==='mes atual') continue;
+    trk[k]={cTrack:num(r[38]), piRadar:r[47]}; }
+
+  // série mensal: faturamento do mês, acumulado, A.Cs e colaborativo
+  const mon={};
+  for(let i=1;i<A.length;i++){ const r=A[i]||[]; if(!r[1]||r[26]==null) continue;
+    const k=norm(r[1]), m=Math.round(num(r[26]));
+    const d=(mon[k]=mon[k]||{});
+    const x=(d[m]=d[m]||{fat:0,acum:0,ac:0,colabAc:0});
+    x.fat+=num(r[28]); x.acum+=num(r[29]); x.ac+=num(r[79]); x.colabAc+=num(r[95]); }
+
+  const ejs=[];
+  for(let i=6;i<R.length;i++){
+    const r=R[i]||[]; if(!r[2]) continue;
+    const k=norm(r[2]); if(k==='mes atual') continue;
+    const t=trk[k]||{};
+    ejs.push({nome:String(r[2]).trim(), regiao:r[1], com:r[6]||'Incubadora',
+      c25:num(r[4]), c26:num(r[5]),
+      meta:num(r[7]), real:num(r[8]), metaMes:num(r[9]), fatMesRes:num(r[10]),
+      csatMeta:num(r[12]), coleta:num(r[15]), coletaTrack:num(r[16]),
+      contratos:num(r[17]), finalizados:num(r[18]),
+      ecmMeta:num(r[21]), ecmReal:num(r[22]), membros:num(r[23]), membrosEcm:num(r[24]),
+      piReal:num(r[31]), cMeta:num(r[32]), cReal:num(r[33]), cPct:num(r[34]),
+      escalonadas:[43,44,45,46,47,48,49,50,51,52,53,54].map(c=>num(r[c-1])), // AQ..BB, meta acumulada de cada mês
+      situacao:r[68],
+      cTrack:num(t.cTrack), piRadar:t.piRadar, mon:mon[k]||{}});
+  }
+  if(!ejs.length) throw new Error('Nenhuma EJ encontrada nas linhas 7–48 da aba RESUMÃO.');
+  const row52=R[51]||[];
+  return {fonte:null, mesRef:Math.round(num(row52[6]))||new Date().getMonth()+1, ejs};
+}
+
+/* ============ cálculo ============ */
+function compute(raw, mes){
+  const ejs = raw.ejs.map(e=>{
+    const m = e.mon[mes] || {};
+    const ref = (mes===raw.mesRef);                       // no mês de referência vale o número oficial do RESUMÃO
+    const real   = ref ? e.real  : (m.acum  ?? e.real);
+    const cReal  = ref ? e.cReal : (m.colabAc ?? e.cReal);
+    const fatMes = ref ? (e.fatMesRes || m.fat || 0) : (m.fat || 0);
+    const sig = e.metaMes || (e.meta? e.meta/12 : 0);      // Ritmo Significativo = meta anual / 12
+    const esc = e.escalonadas[mes-1] || sig*mes;          // meta escalonada acumulada do mês
+    const acum5 = (e.mon[5]||{}).acum || 0;
+    const cEsc = e.cMeta*mes/12;
+    let acPeriodo = 0;
+    for(let mm=7; mm<=mes; mm++) acPeriodo += (e.mon[mm]||{}).ac || 0;
+    // farol de Engajamento com o MEJ, recalculado (a planilha traz a coluna vazia)
+    const farol = e.ecmMeta<=0 ? '—'
+      : (e.ecmReal < .25*e.ecmMeta ? 'Vermelho'
+        : (e.ecmReal > e.ecmMeta ? 'BATEU'
+          : (e.ecmReal < .5*e.ecmMeta ? 'Amarelo' : 'Verde')));
+    const o = Object.assign({}, e, {sig, esc, real, cReal, fatMes, cEsc, farol, ac_p:acPeriodo,
+      pctMeta: e.meta? real/e.meta : 0,
+      pctEsc: esc? real/esc : 0,
+      pctMai: e.meta? acum5/e.meta : 0,
+      deltaPP: e.meta? (real-acum5)/e.meta : 0,
+      deltaAbs: real-acum5});
+    o.mov = (e.cTrack>0 && e.c26>0)
+      ? (e.cTrack>e.c26 ? 'AVANÇA' : (e.cTrack<e.c26 ? 'CAI' : 'PERMANECE'))
+      : 'PERMANECE';
+    o.realeza = esc>0 && real>=esc;
+    o.signif  = sig>0 && fatMes>=sig;      // atingiu a meta de faturamento do mês
+    o.garra   = o.signif;
+    o.ecmVerde = farol==='Verde' || farol==='BATEU';
+    o.colabVerde = e.cMeta>0 && cReal>=cEsc;
+    o.colabZero = cReal>0;
+    o.guiando = acPeriodo>=1;
+    o.piOk = e.piReal>=1;
+    o.gapRealeza = Math.max(0, esc-real);
+    o.gapGarra = Math.max(0, sig-fatMes);
+    o.gapEcm = Math.max(0, Math.ceil(.5*e.ecmMeta*e.membros)-e.membrosEcm);
+    o.gapEcmBateu = Math.max(0, Math.ceil(e.ecmMeta*e.membros)-e.membrosEcm);
+    o.gapColab = Math.max(0, cEsc-cReal);
+    o.crit = {escalonado:o.realeza,
+      ecm60: e.ecmMeta? e.ecmReal>=.6*e.ecmMeta : false,
+      csat80: e.coletaTrack>=.8,
+      tracking: o.mov!=='CAI',
+      colab50: (e.c26===4||e.c26===5)? e.cPct>=.5 : null};
+    o.critOk = Object.values(o.crit).filter(v=>v===true).length;
+    o.critTot = Object.values(o.crit).filter(v=>v!==null).length;
+    o.respostas = o.critOk===o.critTot;
+    return o;
+  });
+  const coms = Object.keys(COM_METAS).map(c=>{
+    const sub = ejs.filter(e=>e.com===c), meta=COM_METAS[c];
+    const atual = {verde:sub.filter(e=>e.realeza).length, ecm:sub.filter(e=>e.ecmVerde).length,
+                   colab:sub.filter(e=>e.colabVerde).length, sig:sub.filter(e=>e.signif).length};
+    const gaps={}; Object.keys(meta).forEach(k=>gaps[k]=Math.max(0,meta[k]-atual[k]));
+    return {nome:c, n:sub.length, meta, atual, gaps, ok:Object.keys(meta).every(k=>atual[k]>=meta[k])};
+  });
+  // Saldo de Evolução da Rede, a partir do tracking de cluster:
+  // cada EJ que cai pesa negativo conforme o cluster em que está hoje.
+  const sdeRows=[1,2,3,4,5].map(c=>{
+    const sub=ejs.filter(e=>e.c26===c);
+    const cai=sub.filter(e=>e.mov==='CAI').length;
+    const sobe=sub.filter(e=>e.mov==='AVANÇA').length;
+    return {c, n:sub.length, cai, sobe, perm:sub.length-cai-sobe, peso:PESO[c],
+            contrib:-PESO[c]*cai, caindo:sub.filter(e=>e.mov==='CAI'), subindo:sub.filter(e=>e.mov==='AVANÇA')};
+  });
+  // avanços não abatem o saldo: só as quedas contam
+  const sde={ rows:sdeRows,
+    atual: sdeRows.reduce((s,r)=>s+r.contrib,0),
+    cai: sdeRows.reduce((s,r)=>s+r.cai,0), sobe: sdeRows.reduce((s,r)=>s+r.sobe,0) };
+  const N=ejs.length, tot=ejs.reduce((s,e)=>s+e.real,0);
+  const verde=ejs.filter(e=>e.realeza).length, zero=ejs.filter(e=>e.colabZero).length;
+  const glob={N, mes, fatReal:tot, fatMeta:2000000,
+    verde, verdeMeta:Math.ceil(.45*N), verdePct:verde/N,
+    zero, zeroMeta:Math.ceil(.52*N), zeroPct:zero/N,
+    amarelo: ejs.filter(e=>!e.realeza && e.esc>0 && e.real>=e.sig*(mes-1)).length,
+    sde, signif: ejs.filter(e=>e.signif).length,
+    guiando: ejs.filter(e=>e.guiando).length, pi: ejs.filter(e=>e.piOk).length,
+    respostas: ejs.filter(e=>e.respostas).length,
+    csat80: ejs.filter(e=>e.coletaTrack>=.8).length,
+    sigMetaTotal: Object.values(COM_METAS).reduce((s,m)=>s+m.sig,0)};
+  return {ejs, coms, glob};
+}
+
+/* ============ helpers de render ============ */
+const brl = n => 'R$ ' + Math.round(n).toLocaleString('pt-BR');
+const pct = n => (n*100).toFixed(Math.abs(n)<.1?1:0).replace('.',',') + '%';
+const dec = n => Number(n).toFixed(2).replace('.',',').replace(/,?0+$/,m=>m.includes(',')?'':m);
+const esc = s => String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function paete(ratio,color){ const N=26,on=Math.min(N,Math.round(ratio*N));
+  let h='<div class="paete" style="--c:'+color+'">';
+  for(let i=0;i<N;i++) h+='<i class="'+(i<on?(ratio>=1?'on over':'on'):'')+'"></i>';
+  return h+'</div>'; }
+function tbl(rows, cols){
+  if(!rows.length) return '<p class="cap">Nenhuma EJ nesta lista com os dados atuais.</p>';
+  return '<div class="scroll"><table><thead><tr>'+cols.map(c=>'<th>'+c[0]+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map((r,i)=>'<tr>'+cols.map(c=>'<td class="'+(c[2]||'')+'">'+c[1](r,i)+'</td>').join('')+'</tr>').join('')+
+    '</tbody></table></div>';
+}
+
+/* ============ render ============ */
+function render(){
+  const {ejs,coms,glob}=MODEL, mesNome=MESES[glob.mes-1];
+
+  /* globais */
+  const G=[
+   {t:'Faturamento da Rede', v:brl(glob.fatReal), s:'de '+brl(glob.fatMeta), r:glob.fatReal/glob.fatMeta, c:'var(--gold)',
+    cap: glob.fatReal>=glob.fatMeta ? 'Meta batida com '+brl(glob.fatReal-glob.fatMeta)+' de folga.' : 'Faltam '+brl(glob.fatMeta-glob.fatReal)+'.'},
+   {t:'EJs no verde de '+mesNome, v:glob.verde+'<small> / '+glob.verdeMeta+'</small>', s:'', r:glob.verde/glob.verdeMeta, c:'var(--pink)',
+    cap:'Meta: 45% da Rede ('+glob.verdeMeta+' EJs). Hoje '+pct(glob.verdePct)+'. '+(glob.verde>=glob.verdeMeta?'Meta batida.':'Faltam '+(glob.verdeMeta-glob.verde)+' EJs — e '+glob.amarelo+' estão no amarelo, a um mês de distância.')},
+   {t:'Fora do zero de colab', v:glob.zero+'<small> / '+glob.zeroMeta+'</small>', s:'', r:glob.zero/glob.zeroMeta, c:'var(--ok)',
+    cap:'Meta: 52% da Rede. Hoje '+pct(glob.zeroPct)+'.'+(glob.zero===glob.zeroMeta?' Batida no fio: uma EJ a menos derruba o indicador.':'')},
+   {t:'Saldo de Evolução (SDE)', v:dec(glob.sde.atual), s:'meta: positivo', r:glob.sde.atual>0?1:0, c:'var(--red)',
+    cap:'Calculado pelo tracking de cluster: '+glob.sde.cai+' EJs caindo, cada uma pesando conforme o cluster em que está hoje. Detalhe por cluster na aba Gaps.'}
+  ];
+  document.getElementById('globalCards').innerHTML = G.map(g=>`
+   <div class="card"><h3>${g.t}</h3>
+     <div class="big">${g.v} ${g.s?'<small>'+g.s+'</small>':''}</div>
+     ${paete(Math.max(0,Math.min(1.2,g.r)), g.c)}
+     <p class="cap">${g.cap}</p></div>`).join('');
+
+  /* comunidades */
+  const LBL={verde:'EJs no verde de '+mesNome, ecm:'EJs no verde de ECM', colab:'EJs no verde de colab', sig:'EJs no significativo'};
+  document.getElementById('coms').innerHTML = coms.map(c=>{
+    const rows=Object.keys(LBL).map(k=>{
+      const a=c.atual[k], m=c.meta[k], ok=a>=m;
+      let mini='<div class="mini">'; for(let i=0;i<m;i++) mini+='<i class="'+(i<a?'on':'need')+'"></i>'; mini+='</div>';
+      return `<div class="row"><div>${LBL[k]}${mini}</div><b style="color:${ok?'var(--ok)':'var(--muted)'}">${a}/${m}${ok?' ✓':' · faltam '+(m-a)}</b></div>`;
+    }).join('');
+    const falta=Object.values(c.gaps).reduce((s,v)=>s+v,0);
+    return `<div class="com">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <h3>${c.nome}</h3>
+        ${c.ok?'<span class="badge b-ok">reconhecida</span>':'<span class="badge b-warn">'+falta+' EJs de distância</span>'}
+      </div>
+      <p style="margin:4px 0 0;font-size:12.5px;color:var(--muted)">${c.n} EJs na comunidade</p>${rows}</div>`;
+  }).join('');
+
+  /* reconhecimentos */
+  const realeza=ejs.filter(e=>e.realeza).sort((a,b)=>b.pctEsc-a.pctEsc);
+  const garra=ejs.filter(e=>e.garra).sort((a,b)=>b.fatMes-a.fatMes);
+  const guiando=ejs.filter(e=>e.guiando).sort((a,b)=>b.ac_p-a.ac_p);
+  const AW=[
+   {n:'Realeza do Maracatu', color:'var(--gold)', count:realeza.length,
+    rule:'Indicador: meta escalonada de faturamento · Cálculo: faturamento total ≥ '+glob.mes+' × meta anual/12. Sobem 4 pessoas por EJ.',
+    body: tbl(realeza,[['EJ',e=>'<span class="name">'+esc(e.nome)+'</span>','name'],['Comunidade',e=>'<span class="tag">'+esc(e.com)+'</span>'],['C26',e=>'C'+e.c26,'num'],['Faturado',e=>brl(e.real),'num'],['Escalonada',e=>brl(e.esc),'num'],['% da escalonada',e=>'<b class="yes">'+pct(e.pctEsc)+'</b>','num']])},
+   {n:'Garra do Maracatu', color:'var(--pink)', count:garra.length,
+    rule:'Indicador: meta mensal de faturamento · Cálculo: faturamento de '+mesNome+' ≥ meta anual/12. Sobem 2 pessoas por EJ.',
+    body: tbl(garra,[['EJ',e=>'<span class="name">'+esc(e.nome)+'</span>','name'],['Comunidade',e=>'<span class="tag">'+esc(e.com)+'</span>'],['Faturamento do mês',e=>brl(e.fatMes),'num'],['Significativo',e=>brl(e.sig),'num']])
+      + '<p class="cap" style="margin-top:12px">Só conta lançamento já auditado no mês, então este é o reconhecimento mais sensível ao fechamento das auditorias. Uma EJ pode aparecer aqui e na Realeza ao mesmo tempo: são réguas diferentes (o mês x o acumulado). Veja em <b>Gaps</b> quem está mais perto de virar.</p>'},
+   {n:'Guiando o Cortejo', color:'var(--ok)', count:guiando.length,
+    rule:'Indicador: faturamento colaborativo de julho ao mês de referência · Cálculo: nº de A.Cs ≥ 1 no período. Sobem 2 pessoas por EJ.',
+    body: tbl(guiando,[['EJ',e=>'<span class="name">'+esc(e.nome)+'</span>','name'],['Comunidade',e=>'<span class="tag">'+esc(e.com)+'</span>'],['A.Cs no período',e=>'<b class="yes">'+e.ac_p+'</b>','num'],['Colab. no ano',e=>brl(e.cReal),'num']])}
+  ];
+  document.getElementById('awards').innerHTML = AW.map((a,i)=>`
+   <details class="award" ${i===0?'open':''}>
+     <summary><span class="tick" style="background:${a.color}"></span>
+       <span class="aw-t"><h3>${a.n}</h3><p>${a.count} de ${glob.N} EJs</p></span>
+       <span class="aw-n">${a.count}<span>/${glob.N}</span></span></summary>
+     <div class="aw-body"><p class="rule">${a.rule}</p>${a.body}</div></details>`).join('');
+
+  document.getElementById('outside').innerHTML = [
+   ['Articulador do Chamado','Pontuação na gamificação','fora do escopo'],
+   ['Respondendo ao Batuque','Pontuação na gamificação','fora do escopo'],
+   ['Selo da Excelência','100% de entrega do Selo EJ','fora do escopo'],
+   ['Empresário Resposta','Votação de cada EJ','só no dia do evento'],
+   ['EJ Resposta do Cortejo','Votação da Rede','só no dia do evento'],
+   ['Conselheiros do Chamado','Votação do Conselho','só no dia do evento'],
+   ['No baque do chamado','% de membros presentes no Maracatu','depende da lista de presença'],
+  ].map(([n,ind,why])=>`<div class="card"><h3>${n}</h3><p class="cap" style="margin-top:6px">${ind}</p><span class="badge b-mute" style="margin-top:10px">${why}</span></div>`).join('');
+
+  /* premiações */
+  const persist=ejs.slice().sort((a,b)=> b.deltaPP-a.deltaPP || b.deltaAbs-a.deltaAbs);
+  const pi=ejs.filter(e=>e.piOk);
+  const radar=ejs.filter(e=>!e.piOk && e.piRadar && e.piRadar!=='SEM PI');
+  const CRIT={escalonado:'Ritmo Escalonado', ecm60:'Engajamento com o MEJ ≥ 60% da meta', csat80:'80% de CSAT em projetos finalizados', tracking:'Tracking: se mantendo no cluster', colab50:'C4/C5: 50% da meta de colab'};
+  const quase=ejs.slice().sort((a,b)=> (b.critOk-b.critTot)-(a.critOk-a.critTot) || b.critOk-a.critOk).slice(0,8);
+  document.getElementById('p2').innerHTML = `
+  <section class="sec" style="margin-top:8px">
+    <div class="sec-head"><h2>Persistência no Chamado</h2><span class="note">Cálculo: % da meta em ${mesNome} − % da meta em maio · desempate: total faturado no período · Top 3 sobe ao palco</span></div>
+    <div class="grid g3">${persist.slice(0,3).map((e,i)=>`
+      <div class="card"><span class="badge b-ok">${i+1}º lugar</span>
+        <h3 style="margin-top:12px;font-size:16px;text-transform:none">${esc(e.nome)}</h3>
+        <div class="big">${e.deltaPP>=0?'+':''}${(e.deltaPP*100).toFixed(1).replace('.',',')}<small> p.p.</small></div>
+        <p class="cap">${esc(e.com)} · C${e.c26}<br>Faturou ${brl(e.deltaAbs)} desde maio.</p></div>`).join('')}</div>
+    <div style="margin-top:18px">${tbl(persist.slice(0,12),[['#',(e,i)=>'<span class="rank">'+(i+1)+'</span>','num'],['EJ',e=>'<span class="name">'+esc(e.nome)+'</span>','name'],['Comunidade',e=>'<span class="tag">'+esc(e.com)+'</span>'],['% em maio',e=>pct(e.pctMai),'num'],['% atual',e=>pct(e.pctMeta),'num'],['Crescimento',e=>'<b class="yes">'+(e.deltaPP>=0?'+':'')+(e.deltaPP*100).toFixed(1).replace('.',',')+' p.p.</b>','num'],['Faturado no período',e=>brl(e.deltaAbs),'num']])}</div>
+  </section>
+  <section class="sec">
+    <div class="sec-head"><h2>Respostas de Impacto</h2><span class="note">Indicador: Projeto de Impacto entregue e aprovado</span></div>
+    <div class="grid g2">
+      <div class="card"><h3>Aprovadas hoje</h3><div class="big">${pi.length}<small> / ${glob.N} EJs</small></div>
+        <p class="cap">${pi.length? pi.map(e=>esc(e.nome)+' ('+esc(e.com)+')').join(' · ') : 'Nenhum PI aprovado até a extração.'}</p></div>
+      <div class="card"><h3>Radar de PI</h3><div class="big">${radar.length}<small> em andamento</small></div>
+        <p class="cap">${radar.map(e=>esc(e.nome)+' <span class="tag">'+esc(e.piRadar).toLowerCase()+'</span>').join(' · ')||'—'}</p></div>
+    </div>
+  </section>
+  <section class="sec">
+    <div class="sec-head"><h2>Respostas ao Chamado</h2><span class="note">exige as metas do ciclo ao mesmo tempo · sobe ao palco a EJ inteira</span></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="big">${glob.respostas}<small> EJs com todas as metas</small></div>
+      <p class="cap">${glob.respostas? 'EJs que fecham o combo: '+ejs.filter(e=>e.respostas).map(e=>esc(e.nome)).join(' · ') : 'Ninguém fecha o combo ainda.'} Gargalo atual: CSAT — ${glob.csat80} EJs têm 80% de coleta em projetos finalizados.</p>
+    </div>
+    ${tbl(quase,[['EJ',e=>'<span class="name">'+esc(e.nome)+'</span>','name'],['C26',e=>'C'+e.c26,'num'],
+      ...Object.keys(CRIT).map(k=>[CRIT[k].split(':')[0].split('≥')[0].trim(), e=> e.crit[k]===null?'<span class="no">n/a</span>':(e.crit[k]?'<span class="yes">✓</span>':'<span style="color:var(--bad)">✕</span>'),'num']),
+      ['Placar',e=>'<b>'+e.critOk+'/'+e.critTot+'</b>','num']])}
+    <p class="cap" style="margin-top:10px">Metas do ciclo: ${Object.values(CRIT).join(' · ')}.</p>
+  </section>`;
+
+  /* gaps */
+  const naoVerde=ejs.filter(e=>!e.realeza && e.esc>0).sort((a,b)=>a.gapRealeza-b.gapRealeza);
+  const somaTop=naoVerde.slice(0,3).reduce((s,e)=>s+e.gapRealeza,0);
+  const gapEcm=ejs.filter(e=>!e.ecmVerde && e.gapEcm>0).sort((a,b)=>a.gapEcm-b.gapEcm);
+  const gapColab=ejs.filter(e=>!e.colabVerde && e.cMeta>0).sort((a,b)=>a.gapColab-b.gapColab);
+  document.getElementById('p3').innerHTML = `
+  <section class="sec" style="margin-top:8px">
+    <div class="sec-head"><h2>Onde está o gap</h2><span class="note">o que precisa acontecer até o fechamento das auditorias</span></div>
+    <div class="grid g3">
+      <div class="card"><h3>Verde de ${mesNome}</h3><div class="big">${glob.verde>=glob.verdeMeta?'0':'+'+(glob.verdeMeta-glob.verde)}<small> EJs</small></div>
+        <p class="cap">Para a Rede chegar a 45%. As 3 mais próximas somam <b>${brl(somaTop)}</b> de faturamento faltante.</p></div>
+      <div class="card"><h3>Ritmo Significativo</h3><div class="big">${glob.signif}<small> EJs no mês</small></div>
+        <p class="cap">As metas de comunidade pedem ${glob.sigMetaTotal} EJs no significativo somando as quatro. Depende de lançamento auditado do mês.</p></div>
+      <div class="card"><h3>Saldo de Evolução</h3><div class="big">${dec(glob.sde.atual)}<small> → precisa ser > 0</small></div>
+        <p class="cap">${glob.sde.cai} EJs caem no tracking. Segurar as ${glob.sde.rows.filter(r=>r.cai).map(r=>'C'+r.c).join(', ')} é o caminho mais curto — cada EJ de C2 recuperada vale ${dec(PESO[2])} e cada C1 vale ${dec(PESO[1])}.</p></div>
+    </div>
+  </section>
+  <section class="sec">
+    <div class="sec-head"><h2>Saldo de Evolução da Rede</h2><span class="note">movimento de cluster no tracking · peso C1 0,30 · C2 0,25 · C3, C4 e C5 0,15</span></div>
+    ${tbl(glob.sde.rows,[
+      ['Cluster',r=>'<span class="name">C'+r.c+'</span>','name'],
+      ['EJs',r=>r.n,'num'],
+      ['Caindo',r=>r.cai?'<b style="color:var(--bad)">'+r.cai+'</b>':'0','num'],
+      ['Se mantendo',r=>r.perm,'num'],
+      ['Subindo',r=>r.sobe?'<b class="yes">'+r.sobe+'</b>':'0','num'],
+      ['Peso',r=>dec(r.peso),'num'],
+      ['Contribuição',r=>r.contrib?'<b style="color:var(--bad)">'+dec(r.contrib)+'</b>':'0','num'],
+      ['EJs caindo',r=>r.caindo.map(e=>esc(e.nome)).join(', ')||'—']])}
+    <p class="cap" style="margin-top:10px">Saldo atual: <b style="color:${glob.sde.atual>0?'var(--ok)':'var(--bad)'}">${dec(glob.sde.atual)}</b> — soma das contribuições de quem cai no tracking. Avanços aparecem na coluna "Subindo" como informação de cenário, mas não abatem o saldo.</p>
+  </section>
+  <section class="sec">
+    <div class="sec-head"><h2>Alavancas rápidas</h2><span class="note">menor esforço, maior efeito no placar da Rede</span></div>
+    ${tbl(naoVerde.slice(0,8),[['EJ',e=>'<span class="name">'+esc(e.nome)+'</span>','name'],['Comunidade',e=>'<span class="tag">'+esc(e.com)+'</span>'],['Faturado',e=>brl(e.real),'num'],['Escalonada',e=>brl(e.esc),'num'],['% da régua',e=>pct(e.pctEsc),'num'],['Falta faturar',e=>'<b style="color:var(--gold)">'+brl(e.gapRealeza)+'</b>','num']])}
+  </section>
+  <section class="sec">
+    <div class="sec-head"><h2>Gaps por comunidade</h2><span class="note">Comunidade Resposta</span></div>
+    ${tbl(coms,[['Comunidade',c=>'<span class="name">'+c.nome+'</span>','name'],
+      ...['verde','ecm','colab','sig'].map((k,i)=>[['Verde do mês','Verde de ECM','Verde de colab','Significativo'][i],
+        c=>c.atual[k]+'/'+c.meta[k]+(c.gaps[k]?' <span style="color:var(--bad)">(+'+c.gaps[k]+')</span>':' <span class="yes">✓</span>'),'num']),
+      ['Metas faltando',c=>'<b>'+Object.values(c.gaps).filter(v=>v>0).length+'/4</b>','num']])}
+  </section>
+  <section class="sec">
+    <div class="sec-head"><h2>Gap de engajamento com o MEJ</h2><span class="note">quantos membros faltam para o farol virar verde (50% da meta)</span></div>
+    ${tbl(gapEcm,[['EJ',e=>'<span class="name">'+esc(e.nome)+'</span>','name'],['Comunidade',e=>'<span class="tag">'+esc(e.com)+'</span>'],['Farol',e=>'<span class="badge '+(e.farol==='Amarelo'?'b-warn':'b-bad')+'">'+esc(e.farol)+'</span>'],['Membros no ECM',e=>e.membrosEcm+'/'+e.membros,'num'],['Falta p/ verde',e=>'<b style="color:var(--gold)">+'+e.gapEcm+'</b>','num'],['Falta p/ bater',e=>'+'+e.gapEcmBateu,'num']])}
+  </section>
+  <section class="sec">
+    <div class="sec-head"><h2>Gap de faturamento colaborativo</h2><span class="note">para o verde da meta escalonada do mês</span></div>
+    ${tbl(gapColab.slice(0,12),[['EJ',e=>'<span class="name">'+esc(e.nome)+'</span>','name'],['Comunidade',e=>'<span class="tag">'+esc(e.com)+'</span>'],['Colab. real',e=>brl(e.cReal),'num'],['Escalonada',e=>brl(e.cEsc),'num'],['Falta',e=>'<b style="color:var(--gold)">'+brl(e.gapColab)+'</b>','num'],['Fora do zero',e=>e.colabZero?'<span class="yes">sim</span>':'<span style="color:var(--bad)">não</span>','num']])}
+  </section>`;
+
+  /* por EJ */
+  const comOpts=[...new Set(ejs.map(e=>e.com))].filter(Boolean);
+  document.getElementById('p4').innerHTML = `
+  <section class="sec" style="margin-top:8px">
+    <div class="sec-head"><h2>Situação por EJ</h2><span class="note">${glob.N} empresas juniores</span></div>
+    <div class="controls">
+      <input type="search" id="q" placeholder="Buscar EJ…">
+      <select id="fcom"><option value="">Todas as comunidades</option>${comOpts.map(c=>'<option>'+esc(c)+'</option>').join('')}</select>
+      <select id="fst"><option value="">Todos os status</option><option value="realeza">Realeza (verde do mês)</option><option value="garra">Garra (significativo)</option><option value="guiando">Guiando o Cortejo</option><option value="piOk">Projeto de Impacto</option><option value="none">Sem nenhum reconhecimento</option></select>
+    </div>
+    <div id="tbl"></div>
+  </section>`;
+  const renderTable=()=>{
+    const q=(document.getElementById('q').value||'').toLowerCase();
+    const c=document.getElementById('fcom').value, st=document.getElementById('fst').value;
+    const rows=ejs.filter(e=>(!q||e.nome.toLowerCase().includes(q))
+      && (!c||e.com===c)
+      && (!st || (st==='none' ? !(e.realeza||e.garra||e.guiando||e.piOk) : e[st])))
+      .sort((a,b)=>b.pctEsc-a.pctEsc);
+    document.getElementById('tbl').innerHTML = rows.length? tbl(rows,[
+      ['EJ',e=>'<span class="name">'+esc(e.nome)+'</span><br><span class="tag">'+esc(e.com)+'</span>','name'],
+      ['C25→C26',e=>'C'+e.c25+' → C'+e.c26,'num'],
+      ['% da meta anual',e=>pct(e.pctMeta),'num'],
+      ['Verde do mês',e=>e.realeza?'<span class="yes">✓</span>':'<span class="no">'+brl(e.gapRealeza)+'</span>','num'],
+      ['Signif.',e=>e.signif?'<span class="yes">✓</span>':'<span class="no">—</span>','num'],
+      ['ECM',e=>'<span class="badge '+(e.ecmVerde?'b-ok':(e.farol==='Amarelo'?'b-warn':'b-bad'))+'">'+esc(e.farol)+'</span>','num'],
+      ['Colab',e=>e.colabVerde?'<span class="yes">verde</span>':(e.colabZero?'<span class="no">fora do zero</span>':'<span style="color:var(--bad)">zero</span>'),'num'],
+      ['A.C. no período',e=>e.ac_p||'—','num'],
+      ['Metas do ciclo',e=>e.critOk+'/'+e.critTot,'num'],
+      ['Situação',e=>'<span class="tag">'+esc(e.situacao||'—').toLowerCase()+'</span>','num'],
+      ['Tracking',e=>'<span class="tag">'+esc(e.mov).toLowerCase()+'</span>','num']])
+      : '<p class="cap">Nenhuma EJ com esses filtros. Limpe a busca para ver a Rede inteira.</p>';
+  };
+  ['q','fcom','fst'].forEach(id=>document.getElementById(id).addEventListener('input',renderTable));
+  renderTable();
+}
+
+/* ============ estado / entrada de dados ============ */
+function refresh(mes){
+  MODEL = compute(RAW, mes ?? RAW.mesRef);
+  document.getElementById('srcName').textContent = RAW.fonte || 'planilha carregada';
+  document.getElementById('srcName').className = 'val' + (RAW.live? ' live' : '');
+  document.getElementById('srcN').textContent = MODEL.glob.N + ' de 42';
+  render();
+}
+function buildMesSelect(sel){
+  const s=document.getElementById('mes');
+  s.innerHTML = MESES.map((m,i)=>`<option value="${i+1}" ${i+1===sel?'selected':''}>${m} (${i+1}/12)</option>`).join('');
+}
+function setError(msg){ const el=document.getElementById('err'); el.hidden=!msg; el.textContent=msg||''; }
+
+function loadFile(f){
+  setError('');
+  const fr=new FileReader();
+  fr.onload=ev=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
+      const raw=parseWorkbook(wb);
+      raw.live=true; raw.fonte=f.name+' · lida em '+new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      RAW=raw; buildMesSelect(raw.mesRef); refresh(raw.mesRef);
+    }catch(e){ setError('Não consegui ler esse arquivo: '+e.message+' — confira se é a Planilha da Excelência exportada em .xlsx.'); }
+  };
+  fr.onerror=()=>setError('Falha ao abrir o arquivo.');
+  fr.readAsArrayBuffer(f);
+}
+document.getElementById('btnLoad').addEventListener('click',()=>document.getElementById('file').click());
+document.getElementById('file').addEventListener('change',e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); });
+document.getElementById('mes').addEventListener('change',e=>refresh(+e.target.value));
+['dragenter','dragover'].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();document.body.classList.add('drag');}));
+['dragleave','drop'].forEach(t=>document.addEventListener(t,e=>{ if(t==='dragleave'&&e.relatedTarget) return; e.preventDefault(); document.body.classList.remove('drag'); }));
+document.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) loadFile(f); });
+if(typeof XLSX==='undefined'){ setError('A leitura de planilha precisa de internet na primeira abertura (biblioteca XLSX). Os números abaixo são o snapshot embutido.'); }
+
+const tabs=[...document.querySelectorAll('.tab')];
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>{x.setAttribute('aria-selected', x===t); document.getElementById(x.dataset.p).hidden = x!==t;});
+  window.scrollTo({top:document.querySelector('.tabs').offsetTop-8,behavior:'smooth'});
+}));
+
+buildMesSelect(RAW.mesRef);
+refresh(RAW.mesRef);
+</script>
+</body>
+</html>
